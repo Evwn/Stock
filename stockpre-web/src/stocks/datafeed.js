@@ -1,9 +1,8 @@
 import { subscribeOnStream, unsubscribeFromStream } from './streaming.js'
-import { authToken } from '../App.js'
-const finnhub = require('finnhub');
-
-const api_key = finnhub.ApiClient.instance.authentications['api_key'];
-api_key.apiKey = authToken;
+// Remove Finnhub import and API key setup
+// const finnhub = require('finnhub');
+// const api_key = finnhub.ApiClient.instance.authentications['api_key'];
+// api_key.apiKey = authToken;
 
 const lastBarsCache = new Map();
 
@@ -35,32 +34,36 @@ export default {
         onSymbolResolvedCallback,
         onResolveErrorCallback
     ) => {
-        const symbols = await (await fetch(`https://finnhub.io/api/v1/stock/symbol?exchange=US&token=${authToken}`)).json();
-        //console.log("SYMBOLS:", symbols);
-        const symbolItem = symbols.find(({ displaySymbol }) => symbolName === displaySymbol);
-        //console.log("FOUND SYMBOL:", symbolItem);
-        if (!symbolItem) {
+        // Use Yahoo Finance API instead of Finnhub
+        try {
+            const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbolName}?interval=1d&range=1d`);
+            const data = await response.json();
+            
+            if (data.chart.result && data.chart.result.length > 0) {
+                const symbolInfo = {
+                    ticker: symbolName,
+                    name: symbolName,
+                    description: symbolName,
+                    type: 'stock',
+                    session: '24x7',
+                    timezone: 'Etc/UTC',
+                    exchange: "NYSE",
+                    minmov: 1,
+                    pricescale: 100,
+                    has_intraday: false,
+                    has_no_volume: true,
+                    has_weekly_and_monthly: false,
+                    supported_resolutions: configurationData.supported_resolutions,
+                    volume_precision: 2,
+                    data_status: 'streaming',
+                };
+                onSymbolResolvedCallback(symbolInfo);
+            } else {
+                onResolveErrorCallback(`Cannot resolve symbol: ${symbolName}`);
+            }
+        } catch (error) {
             onResolveErrorCallback(`Cannot resolve symbol: ${symbolName}`);
-            return;
         }
-        const symbolInfo = {
-            ticker: symbolItem.symbol,
-            name: symbolItem.displaySymbol,
-            description: symbolItem.description,
-            type: symbolItem.type,
-            session: '24x7',
-            timezone: 'Etc/UTC',
-            exchange: "NYSE",
-            minmov: 1,
-            pricescale: 100,
-            has_intraday: false,
-            has_no_volume: true,
-            has_weekly_and_monthly: false,
-            supported_resolutions: configurationData.supported_resolutions,
-            volume_precision: 2,
-            data_status: 'streaming',
-        };
-        onSymbolResolvedCallback(symbolInfo);
     },
     getBars: async (
         symbolInfo,
@@ -71,37 +74,41 @@ export default {
         onErrorCallback,
         firstDataRequest
     ) => {
-        const TV2FinnhubResolutions = {"1D":"D", "1W":"W", "1M":"M"};
-        const request = require('request');
-
-        await request(`https://finnhub.io/api/v1/stock/candle?symbol=${symbolInfo.ticker}&resolution=${TV2FinnhubResolutions[resolution]}&from=${from}&to=${to}&token=${authToken}`,
-            { json: true },
-            (error, response, data) => {
-                if (error) {
-                    onErrorCallback(error);
-                    return;
-                }
-                if (data["s"] === "no_data") {
-                    onHistoryCallback([], {noData: true});
-                    return;
-                }
-                const len = data['t'].length;
+        const TV2YahooResolutions = {"1D":"1d", "1W":"5d", "1M":"1mo"};
+        
+        try {
+            const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbolInfo.ticker}?interval=${TV2YahooResolutions[resolution]}&period1=${from}&period2=${to}`);
+            const data = await response.json();
+            
+            if (data.chart.result && data.chart.result.length > 0) {
+                const result = data.chart.result[0];
+                const timestamps = result.timestamp;
+                const quotes = result.indicators.quote[0];
+                
                 let bars = [];
-                for (var i = 0; i < len; i += 1) {
-                    bars = [...bars, {
-                        time: data['t'][i] * 1000,
-                        low: data['l'][i],
-                        high: data['h'][i],
-                        open: data['o'][i],
-                        close: data['c'][i]
-                    }];
+                for (let i = 0; i < timestamps.length; i++) {
+                    if (quotes.open[i] && quotes.high[i] && quotes.low[i] && quotes.close[i]) {
+                        bars.push({
+                            time: timestamps[i] * 1000,
+                            low: quotes.low[i],
+                            high: quotes.high[i],
+                            open: quotes.open[i],
+                            close: quotes.close[i]
+                        });
+                    }
                 }
-                if (firstDataRequest) {
-                    lastBarsCache.set(symbolInfo.displaySymbol, { ...bars[bars.length - 1] })
+                
+                if (firstDataRequest && bars.length > 0) {
+                    lastBarsCache.set(symbolInfo.ticker, { ...bars[bars.length - 1] });
                 }
-                //console.log("GETBARS:", bars);
-                onHistoryCallback(bars, {noData: false});
-        }); 
+                
+                onHistoryCallback(bars, {noData: bars.length === 0});
+            } else {
+                onHistoryCallback([], {noData: true});
+            }
+        } catch (error) {
+            onErrorCallback(error);
+        }
     },
     searchSymbols: async (
         userInput,
@@ -110,6 +117,8 @@ export default {
         onResultReadyCallback
     ) => {
         console.log("SEARCHED");
+        // Implement symbol search if needed
+        onResultReadyCallback([]);
     },
     subscribeBars: (
         symbolInfo,

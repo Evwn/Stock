@@ -4,6 +4,7 @@ import { Stock } from "./detail";
 import { StockList } from "./list";
 import { ActionButton, AddRemoveButton } from "./buttons";
 import { authToken } from "../App.js";
+import Swal from 'sweetalert2';
 
 import {
   Button,
@@ -45,24 +46,32 @@ export function StockLink(props) {
 
   const update = () => {
     fetch(
-      `https://finnhub.io/api/v1/quote?symbol=${stock.ticker}&token=${authToken}`
+      `https://query1.finance.yahoo.com/v8/finance/chart/${stock.ticker}?interval=1d&range=1d`
     ).then((request) => {
       request.json().then((fullfilled_request) => {
         console.log("Filled", fullfilled_request);
         try {
-          var _openingPrice = parseFloat(fullfilled_request["o"]);
-          var _currentPrice = parseFloat(fullfilled_request["c"]);
-          setCurrentPrice(_currentPrice.toFixed(2));
-          var _percentChange =
-            (100.0 * (_currentPrice - _openingPrice)) / _openingPrice;
+          const result = fullfilled_request.chart.result[0];
+          const quote = result.indicators.quote[0];
+          const timestamp = result.timestamp[0];
+          const open = quote.open[0];
+          const close = quote.close[0];
+          
+          setCurrentPrice(close.toFixed(2));
+          const percentChange = ((close - open) / open) * 100;
           setPercentChange(
-            (_percentChange < 0.0 ? "" : "+") + _percentChange.toFixed(2) + "%"
+            (percentChange < 0.0 ? "" : "+") + percentChange.toFixed(2) + "%"
           );
-        } catch {
+        } catch (error) {
+          console.error("Error parsing stock data:", error);
           setCurrentPrice("Loading...");
           setPercentChange("Loading...");
         }
       });
+    }).catch((error) => {
+      console.error("Error fetching stock data:", error);
+      setCurrentPrice("Error");
+      setPercentChange("Error");
     });
   };
 
@@ -164,7 +173,7 @@ export function StockDetailComponent(props) {
       setTicker(response.ticker);
       setIsTracking(response.is_tracking);
     } else {
-      alert("Error finding stock");
+      Swal.fire({icon: 'error', title: 'Stock Error', text: 'Error finding stock'});
     }
   };
 
@@ -184,7 +193,7 @@ export function StockDetailComponent(props) {
       setHasPrediction(true);
       setDidPredictionLookup(true);
     } else {
-      alert("Unable to find prediction");
+      Swal.fire({icon: 'error', title: 'Prediction Error', text: 'Unable to find prediction'});
     }
   };
 
@@ -208,7 +217,7 @@ export function StockDetailComponent(props) {
       setPrediction(newPrediction);
       setHasPrediction(true);
     } else {
-      alert("cant add/remove, status:", status);
+      Swal.fire({icon: 'error', title: 'Action Error', text: `Can't add/remove, status: ${status}`});
     }
   };
 

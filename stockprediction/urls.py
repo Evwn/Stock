@@ -37,7 +37,7 @@ urlpatterns = [
     path('logout/', logout_view),
     path('register/', register_view),
     path('profile/', profile_view),
-    path('stocks/<str:ticker>', stock_detail_view),
+    path('stocks/<str:ticker>/', stock_detail_view),
     path('api/stocks/', include('stocks.api.urls')),
     path('api/prediction/', include('prediction.api.urls'))
 ]

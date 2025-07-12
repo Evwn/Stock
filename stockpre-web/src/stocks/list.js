@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { apiStockList } from "./lookup";
 
 import { StockLink } from "./components";
+import Swal from 'sweetalert2';
 
 export function StockList(props) {
   const [stocksInit, setStocksInit] = useState([]);
@@ -28,7 +29,7 @@ export function StockList(props) {
       setHasPrediction(true);
       setDidPredictionLookup(true);
     } else {
-      alert("Unable to find prediction");
+      Swal.fire({icon: 'error', title: 'Prediction Error', text: 'Unable to find prediction'});
     }
   };
 
@@ -46,7 +47,7 @@ export function StockList(props) {
           setStocksInit([...response]);
           setStocksDidSet(true);
         } else {
-          alert("Error, status:", status);
+          Swal.fire({icon: 'error', title: 'Error', text: `Error, status: ${status}`});
         }
       };
       apiStockList(handleStockListLookup);

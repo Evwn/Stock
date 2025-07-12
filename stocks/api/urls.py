@@ -9,7 +9,7 @@ from .views import (
 
 urlpatterns = [
     path('', stock_list_api_view),
-    path('search', stock_search_api_view),
-    path('<str:ticker>', stock_detail_api_view),
-    path('<str:ticker>/action', stock_action_api_view)
+    path('search/', stock_search_api_view),
+    path('<str:ticker>/', stock_detail_api_view),
+    path('<str:ticker>/action/', stock_action_api_view)
 ]

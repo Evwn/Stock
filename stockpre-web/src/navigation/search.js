@@ -4,6 +4,7 @@ import { Autocomplete } from "@material-ui/lab";
 import React, { useState, useEffect } from "react";
 
 import { apiStockSearch } from "./lookup";
+import Swal from 'sweetalert2';
 
 export function StockSearchComponent(props) {
   const classes = useStyles();
@@ -39,9 +40,9 @@ export function StockSearchComponent(props) {
       setSearchResults([...response]);
       console.log("SEARCH RESULTS: ", searchResults);
     } else if (status === 403) {
-      alert("Unauthorized, must login to access");
+      Swal.fire({icon: 'error', title: 'Unauthorized', text: 'Must login to access'});
     } else {
-      alert("Error finding stock, status:", status);
+      Swal.fire({icon: 'error', title: 'Stock Error', text: `Error finding stock, status: ${status}`});
     }
   };
 

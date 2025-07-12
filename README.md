@@ -12,6 +12,7 @@ Activate the virtual environment with
 `pipenv shell`
 
 Next run all migrations for database with
+   python manage.py collectstatic
 
 `./manage.py makemigrations`
 
@@ -23,3 +24,8 @@ and apply them
 ## Running
 
 `./manage.py runserver`
+
+
+cd stockpre-web
+npm install request --legacy-peer-deps
+npm run build
