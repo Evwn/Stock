@@ -7,7 +7,6 @@ import { AppBar, IconButton, Toolbar, List, ListItem, ListItemText, makeStyles, 
 import { HomeRounded, KeyboardArrowUpRounded } from "@material-ui/icons";
 import { PropTypes } from "prop-types";
 import Papa from "papaparse";
-import fs from "fs";
 
 const navLinks = [
   { title: "Profile", path: "/profile" },

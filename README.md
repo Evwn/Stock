@@ -1,3 +1,9 @@
+python3 -m venv myenv    
+
+ python ./myenv/bin/activate  
+
+ .\myenv\Scripts\activate   
+
 # Stock Prediction
 Run `pipenv update` to sync the pipfile, then install and shell
 
@@ -12,7 +18,6 @@ Activate the virtual environment with
 `pipenv shell`
 
 Next run all migrations for database with
-   python manage.py collectstatic
 
 `./manage.py makemigrations`
 
@@ -23,9 +28,12 @@ and apply them
 
 ## Running
 
-`./manage.py runserver`
-
-
 cd stockpre-web
 npm install request --legacy-peer-deps
+$env:NODE_OPTIONS="--openssl-legacy-provider";
 npm run build
+cd ..
+python manage.py collectstatic
+
+`./manage.py runserver` or python manage.py runsslserver     
+

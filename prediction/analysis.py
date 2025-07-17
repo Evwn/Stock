@@ -1,6 +1,6 @@
 import os
 import pathlib
-#import tensorflow as tf
+import tensorflow as tf
 import numpy as np
 import keras
 import random
@@ -155,28 +155,14 @@ def get_rsi(percents, train=True):
 
 
 def get_prediction(ticker):
-    price_map = yf.Ticker(ticker).history(period="max")
-    volumes = price_map['Volume'][1:].array
-    opens = price_map['Open'][1:].array
-    highs = price_map['High'][1:].array
-    lows = price_map['Low'][1:].array
-    closes = price_map['Close'][1:].array
-    percents = []
-    for o, c in zip(opens,closes):
-        percents.append(100 * (c - o)/o)
-    rsi = get_rsi(percents, train=False)
-    macd = get_macd(closes, train=False)
-    rsi = np.array(rsi)
-    macd = np.array(macd)
-    p = pathlib.Path(__file__).parent.absolute() / 'test_model_tf'#'spy_macd_rsi_v0'
-    model = keras.models.load_model(p)
-    pred_range = model.predict([rsi, macd]).squeeze()
-    pred_range.sort()
-    max_percentage = max(pred_range)
-    min_percentage = min(pred_range)
-    weighted_average_percentage = np.average(pred_range)
-    #print('MAX: ', max_percentage, ' MIN: ', min_percentage, ' AVG: ', weighted_average_percentage)
-    max_value = closes[-1] * (max_percentage + 1)
-    min_value = closes[-1] * (1 + min_percentage)
-    weighted_value = closes[-1] * (weighted_average_percentage + 1)
-    return (weighted_value, max_value, min_value )
+    price_map = yf.Ticker(ticker).history(period="30d")
+    closes = price_map['Close'].values
+    # Use last 10 closes as input
+    if len(closes) < 10:
+        closes = np.pad(closes, (10-len(closes), 0), 'constant', constant_values=closes[0])
+    x_input = closes[-10:].reshape(1, 10, 1)
+    p = pathlib.Path(__file__).parent.absolute() / 'public_stock_model.h5'
+    model = keras.models.load_model(p, compile=False)
+    pred = model.predict(x_input).squeeze()
+    # For demo, return pred as all three values
+    return (float(pred), float(pred), float(pred))

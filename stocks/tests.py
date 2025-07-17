@@ -22,7 +22,10 @@ class StockTestCase(TestCase):
 
     def test_user_add_stock(self):
         client = self.get_client()
-        response = client.post('/api/stocks/ABC/action/', follow=True)
+        response = client.post('/api/stocks/ABC/action/')
+        print('DEBUG: status_code:', response.status_code)
+        print('DEBUG: content:', response.content)
+        print('DEBUG: Location:', response.get('Location', None))
         self.assertEqual(response.status_code, 200)
         ticker = response.json().get('ticker')
         self.assertEqual(ticker, 'ABC')
@@ -46,5 +49,16 @@ class StockTestCase(TestCase):
 
     def test_yfinance_fetch(self):
         import yfinance as yf
-        data = yf.Ticker("AAPL").history(period="1d")
-        self.assertFalse(data.empty, "yfinance did not return data for AAPL")
+        data = yf.Ticker("MSFT").history(period="1d")
+        print('DEBUG: yfinance MSFT data:', data)
+        self.assertFalse(data.empty, "yfinance did not return data for MSFT")
+
+    def test_prediction_api(self):
+        client = self.get_client()
+        # Ensure the stock exists and is tracked by the user
+        client.post('/api/stocks/MSFT/action/')
+        response = client.post('/api/prediction/create', {'ticker': 'MSFT'}, content_type='application/json')
+        print('DEBUG: prediction API status:', response.status_code)
+        print('DEBUG: prediction API content:', response.content)
+        self.assertEqual(response.status_code, 201)
+        self.assertIn('future_value', response.json()['prediction'])

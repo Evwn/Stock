@@ -5,6 +5,7 @@ import { StockList } from "./list";
 import { ActionButton, AddRemoveButton } from "./buttons";
 import { authToken } from "../App.js";
 import Swal from 'sweetalert2';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 import {
   Button,
@@ -20,7 +21,7 @@ import {
   Typography,
 } from "@material-ui/core";
 
-// Shows singe quote and prediction. Routes to detailed view
+// Shows single quote and prediction. Routes to detailed view
 export function StockLink(props) {
   const {
     stock,
@@ -32,7 +33,9 @@ export function StockLink(props) {
   const [currentPrice, setCurrentPrice] = useState("Loading...");
   const [percentChange, setPercentChange] = useState("Loading...");
   const [currPrediction, setCurrPrediction] = useState(null);
-  const classes = useStyles();
+  const [priceHistory, setPriceHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const classes = makeStyles();
 
   const handleStockLink = (event) => {
     event.preventDefault();
@@ -44,21 +47,30 @@ export function StockLink(props) {
     apiStockAction(stock.ticker, false, () => {});
   };
 
+  // Fetch recent price history and current price
   const update = () => {
+    setLoading(true);
     fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${stock.ticker}?interval=1d&range=1d`
+      `https://query1.finance.yahoo.com/v8/finance/chart/${stock.ticker}?interval=1d&range=1mo`
     ).then((request) => {
       request.json().then((fullfilled_request) => {
-        console.log("Filled", fullfilled_request);
         try {
           const result = fullfilled_request.chart.result[0];
           const quote = result.indicators.quote[0];
-          const timestamp = result.timestamp[0];
-          const open = quote.open[0];
-          const close = quote.close[0];
-          
-          setCurrentPrice(close.toFixed(2));
-          const percentChange = ((close - open) / open) * 100;
+          const timestamps = result.timestamp;
+          const closes = quote.close;
+          const opens = quote.open;
+          // Build price history for chart
+          const history = timestamps.map((t, i) => ({
+            date: new Date(t * 1000).toLocaleDateString(),
+            close: closes[i],
+            open: opens[i],
+          }));
+          setPriceHistory(history);
+          // Set current price and percent change
+          const lastIdx = closes.length - 1;
+          setCurrentPrice(closes[lastIdx].toFixed(2));
+          const percentChange = ((closes[lastIdx] - opens[lastIdx]) / opens[lastIdx]) * 100;
           setPercentChange(
             (percentChange < 0.0 ? "" : "+") + percentChange.toFixed(2) + "%"
           );
@@ -66,12 +78,16 @@ export function StockLink(props) {
           console.error("Error parsing stock data:", error);
           setCurrentPrice("Loading...");
           setPercentChange("Loading...");
+          setPriceHistory([]);
         }
+        setLoading(false);
       });
     }).catch((error) => {
       console.error("Error fetching stock data:", error);
       setCurrentPrice("Error");
       setPercentChange("Error");
+      setPriceHistory([]);
+      setLoading(false);
     });
   };
 
@@ -82,65 +98,50 @@ export function StockLink(props) {
     if (prediction && !currPrediction) {
       setCurrPrediction(prediction);
     }
+    update();
     const interval = setInterval(() => {
       update();
-    }, 5000 * length);
+    }, 30000); // update every 30 seconds
     return () => {
       setCurrPrediction(null);
       clearInterval(interval);
     };
   }, [didPredictionLookup, handleBackendPredictionLookup, prediction]);
 
-  // Zane's working example
-  // return (
-  //   <div onClick={handleStockLink} className="border m-3 p-3">
-  //     <h5>{stock.ticker}</h5>
-  //     <h6>{stock.company_name}</h6>
-  //     <div onClick={handleStockLink}>
-  //       {currentPrice.toFixed(2)} ({percentChange >= 0 && <span>+</span>}{(percentChange * 100).toFixed(2)}%)
-  //     </div>
-  //   </div>
-  // );
-
-  // Max testing
   return (
-    <Grid
-      container
-      spacing={0}
-      direction="column"
-      alignItems="center"
-      justify="space-evenly"
-    >
-      <Card className={classes.root}>
-        <CardHeader
-          className={classes.header}
-          title={stock.company_name}
-          subheader={stock.ticker}
-        />
-        <CardContent>
-          <Grid
-            container
-            direction="row"
-            alignContent="flex-start"
-            justify="space-evenly"
-          >
-            <Grid item>
-              <Typography>Current Price: {currentPrice}</Typography>
-              <Typography>Change: {percentChange}</Typography>
-            </Grid>
-            <Grid item>
-              <Button
-                className={classes.button}
-                variant="contained"
-                onClick={handleStockLink}
-              >
-                Details
-              </Button>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
-    </Grid>
+    <Card style={{ margin: '1em', padding: '1em' }}>
+      <CardContent>
+        <Typography variant="h6" onClick={handleStockLink} style={{ cursor: 'pointer' }}>
+          {stock.ticker} - {stock.company_name}
+        </Typography>
+        <Typography variant="body1">
+          Price: <b>{currentPrice}</b> <span style={{ color: percentChange.startsWith('-') ? 'red' : 'green' }}>{percentChange}</span>
+        </Typography>
+        {currPrediction && (
+          <>
+            <Typography variant="body2" color="primary">
+              Predicted: <b>${currPrediction.future_value.toFixed(2)}</b> (Range: ${currPrediction.lower_value.toFixed(2)} - ${currPrediction.upper_value.toFixed(2)})
+            </Typography>
+            <Typography variant="caption" color="textSecondary">
+              For: {currPrediction.prediction_date}
+            </Typography>
+          </>
+        )}
+        <div style={{ width: '100%', height: 150, marginTop: 10 }}>
+          <ResponsiveContainer>
+            <LineChart data={priceHistory} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <XAxis dataKey="date" hide={true} />
+              <YAxis domain={['auto', 'auto']} hide={false} width={40} />
+              <Tooltip />
+              <Line type="monotone" dataKey="close" stroke="#8884d8" dot={false} />
+              {currPrediction && (
+                <ReferenceLine y={currPrediction.future_value} label="Pred" stroke="red" strokeDasharray="3 3" />
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
