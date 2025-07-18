@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     # Third party
     'corsheaders',
     'rest_framework',
+    'rest_framework.authtoken',
     # Internal
     'stocks',
     'prediction',

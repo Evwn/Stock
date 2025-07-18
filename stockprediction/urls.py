@@ -26,18 +26,19 @@ from accounts.views import (
 )
 
 from stocks.views import (
-    stock_home_view,
+    serve_react,
     stock_detail_view,
 )
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', stock_home_view),
+    path('', serve_react),
     path('login/', login_view),
     path('logout/', logout_view),
     path('register/', register_view),
     path('profile/', profile_view),
     path('stocks/<str:ticker>/', stock_detail_view),
+    path('api/', include('backend.api.urls')),
     path('api/stocks/', include('stocks.api.urls')),
     path('api/prediction/', include('prediction.api.urls'))
 ]

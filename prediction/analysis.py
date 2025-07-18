@@ -6,6 +6,7 @@ import keras
 import random
 #import investpy as iv
 import yfinance as yf
+import json
 
 
 SAMPLE_P = 50
@@ -155,14 +156,28 @@ def get_rsi(percents, train=True):
 
 
 def get_prediction(ticker):
+    # Load ticker stats
+    stats_path = pathlib.Path(__file__).parent.absolute() / 'ticker_stats.json'
+    with open(stats_path, 'r') as f:
+        ticker_stats = json.load(f)
+    tickers = list(ticker_stats.keys())
+    ticker_to_idx = {t: i for i, t in enumerate(tickers)}
+    if ticker not in ticker_stats:
+        raise ValueError(f"Ticker {ticker} not in model training set.")
+    mean = ticker_stats[ticker]['mean']
+    std = ticker_stats[ticker]['std']
+    idx = ticker_to_idx[ticker]
     price_map = yf.Ticker(ticker).history(period="30d")
     closes = price_map['Close'].values
-    # Use last 10 closes as input
     if len(closes) < 10:
         closes = np.pad(closes, (10-len(closes), 0), 'constant', constant_values=closes[0])
-    x_input = closes[-10:].reshape(1, 10, 1)
+    window = closes[-10:]
+    norm_window = (window - mean) / std
+    x_price = norm_window.reshape(1, 10, 1)
+    x_ticker = np.array([[idx]])
     p = pathlib.Path(__file__).parent.absolute() / 'public_stock_model.h5'
     model = keras.models.load_model(p, compile=False)
-    pred = model.predict(x_input).squeeze()
+    norm_pred = model.predict([x_price, x_ticker]).squeeze()
+    pred = norm_pred * std + mean
     # For demo, return pred as all three values
     return (float(pred), float(pred), float(pred))

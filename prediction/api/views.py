@@ -15,6 +15,18 @@ from ..analysis import get_prediction
 
 from stocks.models import Stock
 
+import json
+import pathlib
+
+
+@api_view(['GET'])
+def prediction_tickers_api_view(request):
+    stats_path = pathlib.Path(__file__).parent.parent / 'ticker_stats.json'
+    with open(stats_path, 'r') as f:
+        ticker_stats = json.load(f)
+    tickers = list(ticker_stats.keys())
+    return Response(tickers)
+
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])

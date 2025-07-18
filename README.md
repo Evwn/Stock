@@ -35,5 +35,5 @@ npm run build
 cd ..
 python manage.py collectstatic
 
-`./manage.py runserver` or python manage.py runsslserver     
+`python manage.py runserver` or python manage.py runsslserver     
 
